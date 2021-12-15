@@ -1,0 +1,23 @@
+{
+  "images" : [
+    {
+      "filename" : "googlelogo_color_92x30dp.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "googlelogo_color_92x30dp-1.png",
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "filename" : "googlelogo_color_92x30dp-2.png",
+      "idiom" : "universal",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
