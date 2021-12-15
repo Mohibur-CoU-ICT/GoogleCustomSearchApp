@@ -22,7 +22,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         //searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
     }
     
-    
     func jsonToString(json: AnyObject){
         do {
             let data1 =  try JSONSerialization.data(withJSONObject: json, options: JSONSerialization.WritingOptions.prettyPrinted) // first of all convert json to the data
@@ -54,11 +53,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 //                        print(searchResult)
 //                        self._items = searchResult.items
 //
-//                        //                        var i = 0
-//                        //                        for it in _items {
-//                        //                            resultTableView.insertRows(at: [IndexPath(row: i, section: 0)], with: .automatic)
-//                        //                            i++
-//                        //                        }
 //                        DispatchQueue.main.async {
 //                            self.resultTableView.reloadData()
 //                        }
@@ -92,11 +86,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                         print(searchResult)
                         self._items = searchResult.items
                         
-                        //                        var i = 0
-                        //                        for it in _items {
-                        //                            resultTableView.insertRows(at: [IndexPath(row: i, section: 0)], with: .automatic)
-                        //                            i++
-                        //                        }
                         DispatchQueue.main.async {
                             self.resultTableView.reloadData()
                         }
@@ -110,7 +99,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             task.resume()
         }
     }
-    
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return _items?.count ?? 0
