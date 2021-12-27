@@ -100,12 +100,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         print("You tapped me")
         
+        // To open a link in another view
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         let webViewController = storyboard.instantiateViewController(withIdentifier: "WebViewController") as! WebViewController
         webViewController.link = (_items?[indexPath.row].link)!
         webViewController.modalPresentationStyle = UIModalPresentationStyle.fullScreen
         self.present(webViewController, animated: true, completion: nil)
         
+        // To open a link using phone's default browser
 //        if let url = URL(string: (_items?[indexPath.row].link)!) {
 //            UIApplication.shared.open(url)
 //            let myRequest = URLRequest(url: url)

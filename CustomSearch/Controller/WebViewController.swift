@@ -27,10 +27,10 @@ class WebViewController: UIViewController {
         let myURL = URL(string: link)
         let myRequest = URLRequest(url: myURL!)
         webView.load(myRequest)
+        webView.navigationDelegate = self
         
         indicator.center = view.center
         view.addSubview(indicator)
-        indicator.startAnimating()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -51,9 +51,15 @@ class WebViewController: UIViewController {
     
 }
 
-extension WebViewController: UIWebViewDelegate {
-    private func webViewDidFinishLoad(_ webView: WKWebView) {
-        print("Finished loading")
+extension WebViewController: WKNavigationDelegate {
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+//        print("Start Loading")
+        DispatchQueue.main.async {
+            self.indicator.startAnimating()
+        }
+    }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+//        print("End loading")
         DispatchQueue.main.async {
             self.indicator.stopAnimating()
         }
