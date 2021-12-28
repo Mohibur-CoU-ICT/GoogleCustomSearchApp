@@ -8,7 +8,7 @@
 import Foundation
 
 struct Items: Decodable {
-    var title: String=""
-    var link: String=""
-    var snippet: String=""
+    var title: String = ""
+    var link: String = ""
+    var snippet: String = ""
 }

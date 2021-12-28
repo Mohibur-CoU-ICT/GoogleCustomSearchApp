@@ -8,5 +8,6 @@
 import Foundation
 
 struct CustomSearch: Decodable {
+    var queries: Queries?
     var items: [Items]?
 }

@@ -15,15 +15,16 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     @IBOutlet weak var searchButton: UIButton!
     var _items: [Items]?
     var webView: WKWebView!
+    var searchQuery: String?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         resultTableView.delegate = self
         resultTableView.dataSource = self
-//        searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
-//        resultTableView.estimatedRowHeight = 200.0
-//        resultTableView.rowHeight = UITableView.automaticDimension
+        //        searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
+        //        resultTableView.estimatedRowHeight = 200.0
+        //        resultTableView.rowHeight = UITableView.automaticDimension
     }
     
     //    @objc func onTap(_ sender: Any) {
@@ -63,24 +64,45 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         DispatchQueue.main.async {
             self.view.endEditing(true)
         }
-        if(searchQueryTextField.text!.isEmpty == false){
-            CustomSearchService.shared.callCustomSearchAPI(q: searchQueryTextField.text!) { (item, success) in
-                if success {
-                    self._items = item
-                    DispatchQueue.main.async {
-                        self.resultTableView.reloadData()
-                    }
+        searchQuery = searchQueryTextField.text?.trimmingCharacters(in: CharacterSet.whitespaces)
+        print("Query = \(searchQuery!)")
+        if(searchQuery?.isEmpty == false && searchQuery != nil) {
+            searchUtil(si: 1)
+        }
+    }
+    
+    
+    func searchUtil(si: Int) {
+        print("\nsearchUtil called with \(si), \(searchQueryTextField.text!)")
+        CustomSearchService.shared.callCustomSearchAPI(q: searchQuery!, si: si) { (success) in
+            if success {
+                self._items = CustomSearchService.shared.customSearch.items ?? []
+                DispatchQueue.main.async {
+                    self.resultTableView.reloadData()
                 }
-                else {
-                    print("No internet connection")
-                }
+            }
+            else {
+                print("No internet connection")
             }
         }
     }
     
     
+    // pagination methods
+    @IBAction func nextButtonTapped(_ sender: Any) {
+        let si = CustomSearchService.shared.customSearch.queries?.nextPage?.first?.startIndex ?? 1
+        print("\nnextButtonTapped called with \(si), \(searchQueryTextField.text!)")
+        searchUtil(si: si)
+    }
     
-    // TableView Functions
+    @IBAction func previousButtonTapped(_ sender: Any) {
+        let si = CustomSearchService.shared.customSearch.queries?.previousPage?.first?.startIndex ?? 1
+        print("\npreviousButtonTapped called with \(si), \(searchQueryTextField.text!)")
+        searchUtil(si: si)
+    }
+    
+    
+    // TableView methods
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return _items?.count ?? 0
     }
@@ -108,19 +130,19 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         self.present(webViewController, animated: true, completion: nil)
         
         // To open a link using phone's default browser
-//        if let url = URL(string: (_items?[indexPath.row].link)!) {
-//            UIApplication.shared.open(url)
-//            let myRequest = URLRequest(url: url)
-//            webView.load(myRequest)
-//        }
-//        else {
-//            print("Invalid link")
-//        }
+        //        if let url = URL(string: (_items?[indexPath.row].link)!) {
+        //            UIApplication.shared.open(url)
+        //            let myRequest = URLRequest(url: url)
+        //            webView.load(myRequest)
+        //        }
+        //        else {
+        //            print("Invalid link")
+        //        }
     }
     
-//    func tableView(_ tableView: UITableView,
-//               heightForRowAt indexPath: IndexPath) -> CGFloat {
-//       return UITableView.automaticDimension
-//    }
-
+    //    func tableView(_ tableView: UITableView,
+    //               heightForRowAt indexPath: IndexPath) -> CGFloat {
+    //       return UITableView.automaticDimension
+    //    }
+    
 }
