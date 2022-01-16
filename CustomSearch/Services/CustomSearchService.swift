@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 class CustomSearchService {
     static let shared = CustomSearchService()
@@ -26,19 +27,24 @@ class CustomSearchService {
             request.addValue("application/json", forHTTPHeaderField: "Accept")
             
             let task = URLSession.shared.dataTask(with: request as URLRequest, completionHandler: { data, response, error in
-                // print(NSString(data: data!, encoding: String.Encoding.utf8.rawValue))
+//                print(NSString(data: data!, encoding: String.Encoding.utf8.rawValue))
                 if error == nil && data != nil {
                     // Parse JSON
                     let decoder = JSONDecoder()
+                    // this line need to work with core data model
+//                    DispatchQueue.main.async {
+//                        decoder.userInfo[CodingUserInfoKey.managedObjectContext] = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+//                    }
                     do {
                         let searchResult = try decoder.decode(CustomSearch.self, from: data!)
-                        print(searchResult)
+//                        print(searchResult)
                         self.customSearch = searchResult
                         completionHandler(true)
                     }
                     catch {
-                        print(error.localizedDescription)
-                        print("Error in JSON parsing")
+//                        print(error)
+                        debugPrint(error)
+                        print("Error in JSON parsing inside callCustomSearchAPI")
                     }
                 }
                 else{
@@ -49,7 +55,7 @@ class CustomSearchService {
             task.resume()
         }
         else {
-            print("errr occured")
+            print("Error occured")
         }
     }
 }

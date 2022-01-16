@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="19574" systemVersion="20E241" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="All_Items" representedClassName="All_Items" syncable="YES">
+        <attribute name="link" optional="YES" attributeType="String"/>
+        <attribute name="pageContent" optional="YES" attributeType="String"/>
+        <attribute name="searchQuery" optional="YES" attributeType="String"/>
+        <attribute name="snippet" optional="YES" attributeType="String"/>
+        <attribute name="title" optional="YES" attributeType="String"/>
+    </entity>
+    <elements>
+        <element name="All_Items" positionX="-63" positionY="-18" width="128" height="104"/>
+    </elements>
+</model>

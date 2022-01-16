@@ -7,112 +7,184 @@
 
 import UIKit
 import WebKit
+import CoreData
 
 class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
     @IBOutlet weak var resultTableView: UITableView!
     @IBOutlet weak var searchQueryTextField: UITextField!
     @IBOutlet weak var searchButton: UIButton!
-    var _items: [Items]?
+    @IBOutlet weak var footerStackView: UIStackView!
+    var _items = [Items]()
     var webView: WKWebView!
     var searchQuery: String?
+    var previousSearchQuery: String?
+    var fetchStartIndex: Int = 1
+    var totalRowsForSearchQuery: Int = 0
+    
+    // Reference to managed object context
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         resultTableView.delegate = self
         resultTableView.dataSource = self
-        //        searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
-        //        resultTableView.estimatedRowHeight = 200.0
-        //        resultTableView.rowHeight = UITableView.automaticDimension
+        self.footerStackView.addBackground(color: UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 0.3))
+        // searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
     }
     
-    //    @objc func onTap(_ sender: Any) {
-    //        if(searchQueryTextField.text!.isEmpty == false){
-    //            let url = URL(string: "https://www.googleapis.com/customsearch/v1?key=AIzaSyBhDq-e6q0W3aImfJoaABG37vN-LVlx4J8&cx=6e6d97019e0665110&q=\(String(describing: searchQueryTextField.text!)))")!
-    //
-    //            var request = URLRequest(url: url)
-    //            request.httpMethod = "GET"
-    //            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    //            request.addValue("application/json", forHTTPHeaderField: "Accept")
-    //
-    //            let task = URLSession.shared.dataTask(with: request as URLRequest, completionHandler: { data, response, error in
-    //                // print(NSString(data: data!, encoding: String.Encoding.utf8.rawValue))
-    //                if error == nil && data != nil {
-    //                    // Parse JSON
-    //                    let decoder = JSONDecoder()
-    //                    do {
-    //                        let searchResult = try decoder.decode(CustomSearch.self, from: data!)
-    //                        print(searchResult)
-    //                        self._items = searchResult.items
-    //
-    //                        DispatchQueue.main.async {
-    //                            self.resultTableView.reloadData()
-    //                        }
-    //                    }
-    //                    catch {
-    //                        print("Error in JSON parsing")
-    //                    }
-    //                }
-    //            })
-    //
-    //            task.resume()
-    //        }
-    //    }
     
     @IBAction func searchButtonTapped(_ sender: Any) {
         DispatchQueue.main.async {
             self.view.endEditing(true)
         }
-        searchQuery = searchQueryTextField.text?.trimmingCharacters(in: CharacterSet.whitespaces)
-        print("Query = \(searchQuery!)")
-        if(searchQuery?.isEmpty == false && searchQuery != nil) {
-            searchUtil(si: 1)
+        self.searchQuery = searchQueryTextField.text?.trimmingCharacters(in: CharacterSet.whitespaces)
+        // print("Query = \(searchQuery!)")
+        if(self.searchQuery?.isEmpty == false && self.searchQuery != nil) {
+            if self.searchQuery != self.previousSearchQuery {
+                self.fetchStartIndex = 1
+            }
+            searchUtil()
+            self.previousSearchQuery = self.searchQuery
         }
     }
     
     
-    func searchUtil(si: Int) {
-        print("\nsearchUtil called with \(si), \(searchQueryTextField.text!)")
-        CustomSearchService.shared.callCustomSearchAPI(q: searchQuery!, si: si) { (success) in
-            if success {
-                self._items = CustomSearchService.shared.customSearch.items ?? []
-                DispatchQueue.main.async {
-                    self.resultTableView.reloadData()
+    func searchUtil() {
+        print("\nsearchUtil called with \(searchQueryTextField.text!)")
+        if isSearchQueryPresentInDatabase() == false {
+            var startIndex: Int = self.fetchStartIndex
+            while startIndex < 100 {
+                CustomSearchService.shared.callCustomSearchAPI(q: self.searchQuery ?? "", si: startIndex) { (success) in
+                    if success {
+                        for item in [CustomSearchService.shared.customSearch.items] {
+                            if let eachItem = item {
+                                for index in 0..<eachItem.count {
+                                    let itemObj = All_Items(context: self.context)
+                                    itemObj.searchQuery = self.searchQuery
+                                    itemObj.link = eachItem[index].link
+                                    itemObj.title = eachItem[index].title
+                                    itemObj.snippet = eachItem[index].snippet
+                                    do {
+                                        try self.context.save()
+                                        // print("\(startIndex+index) th item Saved successfully")
+                                    }
+                                    catch {
+                                        print("Error in saving")
+                                    }
+                                }
+                            }
+                        }
+                        if startIndex == 1 {
+                            self.fetchItems()
+                            DispatchQueue.main.async {
+                                self.resultTableView.reloadData()
+                            }
+                        }
+                    }
+                    else {
+                        print("No internet connection")
+                    }
                 }
+                startIndex += 10
             }
-            else {
-                print("No internet connection")
+        }
+        else {
+            self.fetchItems()
+            DispatchQueue.main.async {
+                self.resultTableView.reloadData()
             }
+        }
+    }
+    
+    
+    func isSearchQueryPresentInDatabase() -> Bool {
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
+        fetchRequest.includesSubentities = false
+        let pred = NSPredicate(format: "searchQuery == %@", self.searchQuery!)
+        fetchRequest.predicate = pred
+        
+        var entitiesCount = 0
+        do {
+            entitiesCount = try context.count(for: fetchRequest)
+        }
+        catch {
+            print("error executing fetch request: \(error)")
+        }
+        print("Total rows for \(self.searchQuery!) = \(entitiesCount)")
+        self.totalRowsForSearchQuery = entitiesCount
+        return entitiesCount > 0
+    }
+    
+    
+    func fetchItems() {
+        print("fetchItems() called with fetchStartIndex = \(self.fetchStartIndex)")
+        // Fetch the data from Core Data to display in the tableview
+        do {
+            let request = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
+            // set the filtering on the request
+            request.returnsObjectsAsFaults = false
+            let pred = NSPredicate(format: "searchQuery == %@", self.searchQuery!)
+            request.predicate = pred
+            request.fetchOffset = self.fetchStartIndex
+            request.fetchLimit = 10
+            
+            let result = try context.fetch(request)
+            
+            self._items.removeAll()
+            for res in result as! [NSManagedObject] {
+                let obj = Items()
+                obj.title = res.value(forKey: "title") as? String
+                obj.link = res.value(forKey: "link") as? String
+                obj.snippet = res.value(forKey: "snippet") as? String
+                self._items.append(obj)
+            }
+            DispatchQueue.main.async {
+                self.resultTableView.reloadData()
+            }
+        }
+        catch {
+            print("Error in fetchItems(): " + error.localizedDescription)
         }
     }
     
     
     // pagination methods
     @IBAction func nextButtonTapped(_ sender: Any) {
-        let si = CustomSearchService.shared.customSearch.queries?.nextPage?.first?.startIndex ?? 1
-        print("\nnextButtonTapped called with \(si), \(searchQueryTextField.text!)")
-        searchUtil(si: si)
+        // let si = CustomSearchService.shared.customSearch.queries?.nextPage?.first?.startIndex ?? 1
+        // print("\nnextButtonTapped called with \(si), \(searchQueryTextField.text!)")
+        // searchUtil(si: Int(si))
+        if self.fetchStartIndex + 10 <= 91 && self.fetchStartIndex + 10 <= self.totalRowsForSearchQuery {
+            self.fetchStartIndex += 10
+            fetchItems()
+        }
     }
     
     @IBAction func previousButtonTapped(_ sender: Any) {
-        let si = CustomSearchService.shared.customSearch.queries?.previousPage?.first?.startIndex ?? 1
-        print("\npreviousButtonTapped called with \(si), \(searchQueryTextField.text!)")
-        searchUtil(si: si)
+        // let si = CustomSearchService.shared.customSearch.queries?.previousPage?.first?.startIndex ?? 1
+        // print("\npreviousButtonTapped called with \(si), \(searchQueryTextField.text!)")
+        // searchUtil(si: Int(si))
+        if self.fetchStartIndex - 10 >= 1 {
+            self.fetchStartIndex -= 10
+            fetchItems()
+        }
     }
     
     
     // TableView methods
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return _items?.count ?? 0
+        // print("Total number of rows in table = \(self._items.count)")
+        return self._items.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        // print("cell for row at called with \(indexPath.row)")
         if let cell = tableView.dequeueReusableCell(withIdentifier: "CustomGoogleSearchTableViewCell", for: indexPath) as? CustomGoogleSearchTableViewCell
         {
-            cell.linkLabel.text = _items?[indexPath.row].link ?? ""
-            cell.titleLabel.text = _items?[indexPath.row].title ?? ""
-            cell.snippetLabel.text = _items?[indexPath.row].snippet ?? ""
+            cell.linkLabel.text = self._items[indexPath.row].link ?? ""
+            cell.titleLabel.text = self._items[indexPath.row].title ?? ""
+            cell.snippetLabel.text = self._items[indexPath.row].snippet ?? ""
             
             return cell
         }
@@ -120,24 +192,41 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        print("You tapped me")
-        
+        // print("You tapped \(indexPath.row) th link")
         // To open a link in another view
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         let webViewController = storyboard.instantiateViewController(withIdentifier: "WebViewController") as! WebViewController
-        webViewController.link = (_items?[indexPath.row].link)!
+        webViewController.link = (_items[indexPath.row].link)!
         webViewController.modalPresentationStyle = UIModalPresentationStyle.fullScreen
         self.present(webViewController, animated: true, completion: nil)
+        self.resultTableView.deselectRow(at: indexPath, animated: true)
         
-        // To open a link using phone's default browser
-        //        if let url = URL(string: (_items?[indexPath.row].link)!) {
-        //            UIApplication.shared.open(url)
-        //            let myRequest = URLRequest(url: url)
-        //            webView.load(myRequest)
-        //        }
-        //        else {
-        //            print("Invalid link")
-        //        }
+        // Save web page content to database
+        let myURLString = webViewController.link
+        guard let myURL = URL(string: myURLString) else {
+            print("Error: \(myURLString) doesn't seem to be a valid URL")
+            return
+        }
+
+        do {
+            let myHTMLString = try String(contentsOf: myURL, encoding: .ascii)
+            print("WebPage content = \n \(myHTMLString)")
+            
+            let request = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
+            // set the filtering on the request
+            request.returnsObjectsAsFaults = false
+            let pred = NSPredicate(format: "link == %@", myURLString)
+            request.predicate = pred
+            
+            let results = try context.fetch(request)
+            if (results.count > 0) {
+                let update = results[0] as! NSManagedObject
+                update.setValue(myHTMLString, forKey: "pageContent")
+                try context.save()
+            }
+        } catch let error {
+            debugPrint(error)
+        }
     }
     
     //    func tableView(_ tableView: UITableView,
