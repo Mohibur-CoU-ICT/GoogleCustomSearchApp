@@ -154,8 +154,8 @@
                     </view>
                     <connections>
                         <outlet property="footerStackView" destination="34e-RM-BTF" id="DSJ-Ka-ld6"/>
-                        <outlet property="nextButton" destination="C8k-VF-LpF" id="oua-2r-eAj"/>
-                        <outlet property="previousButton" destination="2m7-ui-OD9" id="PlS-Q0-tgm"/>
+                        <outlet property="nextButton" destination="C8k-VF-LpF" id="2kR-Yh-Z77"/>
+                        <outlet property="previousButton" destination="2m7-ui-OD9" id="N0A-DL-ccV"/>
                         <outlet property="resultTableView" destination="GaB-La-eev" id="pua-ek-VeJ"/>
                         <outlet property="searchButton" destination="gjg-fN-jkM" id="tU7-dd-Htk"/>
                         <outlet property="searchQueryTextField" destination="SdN-ai-meL" id="3kC-kw-xwP"/>

@@ -15,6 +15,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     @IBOutlet weak var searchQueryTextField: UITextField!
     @IBOutlet weak var searchButton: UIButton!
     @IBOutlet weak var footerStackView: UIStackView!
+    @IBOutlet weak var previousButton: UIButton!
+    @IBOutlet weak var nextButton: UIButton!
     var _items = [Items]()
     var webView: WKWebView!
     var searchQuery: String?
@@ -31,6 +33,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         resultTableView.delegate = self
         resultTableView.dataSource = self
         self.footerStackView.addBackground(color: UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 0.3))
+        resultTableView.tableFooterView = UIView()
         // searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
     }
     
@@ -53,44 +56,44 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     func searchUtil() {
         print("\nsearchUtil called with \(searchQueryTextField.text!)")
-        if isSearchQueryPresentInDatabase() == false {
-            var startIndex: Int = self.fetchStartIndex
-            while startIndex < 100 {
-                CustomSearchService.shared.callCustomSearchAPI(q: self.searchQuery ?? "", si: startIndex) { (success) in
-                    if success {
-                        for item in [CustomSearchService.shared.customSearch.items] {
-                            if let eachItem = item {
-                                for index in 0..<eachItem.count {
-                                    let itemObj = All_Items(context: self.context)
-                                    itemObj.searchQuery = self.searchQuery
-                                    itemObj.link = eachItem[index].link
-                                    itemObj.title = eachItem[index].title
-                                    itemObj.snippet = eachItem[index].snippet
-                                    do {
-                                        try self.context.save()
-                                        // print("\(startIndex+index) th item Saved successfully")
-                                    }
-                                    catch {
-                                        print("Error in saving")
-                                    }
+        var startIndex: Int = self.totalItemsForSearchQuery()
+        var firstTime: Bool = true
+        while startIndex < 100 {
+            CustomSearchService.shared.callCustomSearchAPI(q: self.searchQuery ?? "", si: startIndex) { (success) in
+                if success {
+                    for item in [CustomSearchService.shared.customSearch.items] {
+                        if let eachItem = item {
+                            for index in 0..<eachItem.count {
+                                let itemObj = All_Items(context: self.context)
+                                itemObj.searchQuery = self.searchQuery
+                                itemObj.link = eachItem[index].link
+                                itemObj.title = eachItem[index].title
+                                itemObj.snippet = eachItem[index].snippet
+                                do {
+                                    try self.context.save()
+                                    // print("\(startIndex+index) th item Saved successfully")
+                                }
+                                catch {
+                                    print("Error in saving")
                                 }
                             }
                         }
-                        if startIndex == 1 {
-                            self.fetchItems()
-                            DispatchQueue.main.async {
-                                self.resultTableView.reloadData()
-                            }
-                        }
                     }
-                    else {
-                        print("No internet connection")
+                    if firstTime {
+                        self.fetchItems()
+                        DispatchQueue.main.async {
+                            self.resultTableView.reloadData()
+                        }
+                        firstTime = false
                     }
                 }
-                startIndex += 10
+                else {
+                    print("No internet connection")
+                }
             }
+            startIndex += 10
         }
-        else {
+        if firstTime {
             self.fetchItems()
             DispatchQueue.main.async {
                 self.resultTableView.reloadData()
@@ -99,7 +102,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
     
     
-    func isSearchQueryPresentInDatabase() -> Bool {
+    func totalItemsForSearchQuery() -> Int {
         let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
         fetchRequest.includesSubentities = false
         let pred = NSPredicate(format: "searchQuery == %@", self.searchQuery!)
@@ -114,7 +117,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         }
         print("Total rows for \(self.searchQuery!) = \(entitiesCount)")
         self.totalRowsForSearchQuery = entitiesCount
-        return entitiesCount > 0
+        return entitiesCount
     }
     
     
@@ -152,9 +155,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     // pagination methods
     @IBAction func nextButtonTapped(_ sender: Any) {
-        // let si = CustomSearchService.shared.customSearch.queries?.nextPage?.first?.startIndex ?? 1
-        // print("\nnextButtonTapped called with \(si), \(searchQueryTextField.text!)")
-        // searchUtil(si: Int(si))
         if self.fetchStartIndex + 10 <= 91 && self.fetchStartIndex + 10 <= self.totalRowsForSearchQuery {
             self.fetchStartIndex += 10
             fetchItems()
@@ -162,9 +162,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
     
     @IBAction func previousButtonTapped(_ sender: Any) {
-        // let si = CustomSearchService.shared.customSearch.queries?.previousPage?.first?.startIndex ?? 1
-        // print("\npreviousButtonTapped called with \(si), \(searchQueryTextField.text!)")
-        // searchUtil(si: Int(si))
         if self.fetchStartIndex - 10 >= 1 {
             self.fetchStartIndex -= 10
             fetchItems()
@@ -210,7 +207,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 
         do {
             let myHTMLString = try String(contentsOf: myURL, encoding: .ascii)
-            print("WebPage content = \n \(myHTMLString)")
+//            print("WebPage content = \n \(myHTMLString)")
             
             let request = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
             // set the filtering on the request
