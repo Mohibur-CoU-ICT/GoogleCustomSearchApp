@@ -33,7 +33,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         resultTableView.delegate = self
         resultTableView.dataSource = self
         self.footerStackView.addBackground(color: UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 0.3))
-        resultTableView.tableFooterView = UIView()
         // searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
     }
     
@@ -150,6 +149,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         catch {
             print("Error in fetchItems(): " + error.localizedDescription)
         }
+        updateButtonVisibility()
     }
     
     
@@ -166,6 +166,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             self.fetchStartIndex -= 10
             fetchItems()
         }
+    }
+    
+    // update button visibility
+    func updateButtonVisibility() {
+        
     }
     
     
@@ -224,6 +229,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         } catch let error {
             debugPrint(error)
         }
+    }
+    
+    func tableView(_ tableView: UITableView,
+                   viewForFooterInSection section: Int) -> UIView? {
+        return UIView()
     }
     
     //    func tableView(_ tableView: UITableView,
