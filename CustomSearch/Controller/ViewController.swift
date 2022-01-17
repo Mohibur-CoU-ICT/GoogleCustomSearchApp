@@ -33,6 +33,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         resultTableView.delegate = self
         resultTableView.dataSource = self
         self.footerStackView.addBackground(color: UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 0.3))
+        self.previousButton.isEnabled = false
+        self.nextButton.isEnabled = false
         // searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
     }
     
@@ -168,9 +170,13 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         }
     }
     
+    
     // update button visibility
     func updateButtonVisibility() {
-        
+        DispatchQueue.main.async {
+            self.previousButton.isEnabled = self.fetchStartIndex != 1
+            self.nextButton.isEnabled = self.fetchStartIndex+10 < self.totalRowsForSearchQuery
+        }
     }
     
     
