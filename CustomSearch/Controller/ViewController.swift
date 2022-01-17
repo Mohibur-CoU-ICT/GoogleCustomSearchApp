@@ -30,9 +30,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
+        // starting network monitoring
+        DispatchQueue.main.async {
+            NetworkMonitor.shared.startMonitoring()
+        }
         resultTableView.delegate = self
         resultTableView.dataSource = self
         self.footerStackView.addBackground(color: UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 0.3))
+        // when app is launced previous and next button is disabled
         self.previousButton.isEnabled = false
         self.nextButton.isEnabled = false
         // searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
@@ -152,6 +157,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             print("Error in fetchItems(): " + error.localizedDescription)
         }
         updateButtonVisibility()
+        updateNoSearchResultsMessage()
     }
     
     
@@ -176,6 +182,40 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         DispatchQueue.main.async {
             self.previousButton.isEnabled = self.fetchStartIndex != 1
             self.nextButton.isEnabled = self.fetchStartIndex+10 < self.totalRowsForSearchQuery
+        }
+    }
+    
+    
+    // update message of no search results
+    func updateNoSearchResultsMessage() {
+        var noDataMessage =
+        "<html style='font-size:20px; font-family: Tahoma;'>"
+        + "<div align='center'>"
+            + "Your search - <b>" + (self.searchQuery ?? "") + "</b> - did not match any documents.<br>"
+            + "<div align='left'>"
+            + "<p>&nbsp;&nbsp;Suggestions:</p>"
+            + "<ul>"
+                + "<li>Make sure that all words are spelled correctly.</li>"
+                + "<li>Try different keywords.</li>"
+                + "<li>Try more general keywords.</li>"
+                + "<li>Try fewer keywords.</li>"
+            + "</ul>"
+            + "</div>"
+        + "<div>"
+        + "</html>"
+        
+        if self.totalRowsForSearchQuery == 0 {
+            if NetworkMonitor.shared.isReachable == false {
+                noDataMessage = "<html style='font-size:20px;'><div align='center'>You are offline and no data<br>found in the offline database.</div></html>"
+            }
+            DispatchQueue.main.async {
+                let noDataLabel = UILabel(frame: CGRect(x: 0.0, y: 0.0, width: self.resultTableView.bounds.size.width, height: self.resultTableView.bounds.size.height))
+//                noDataLabel.text          = noDataMessage
+                noDataLabel.numberOfLines = 0
+                noDataLabel.textAlignment = NSTextAlignment.center
+                noDataLabel.attributedText = noDataMessage.htmlToAttributedString
+                self.resultTableView.backgroundView = noDataLabel
+            }
         }
     }
     
@@ -237,8 +277,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         }
     }
     
-    func tableView(_ tableView: UITableView,
-                   viewForFooterInSection section: Int) -> UIView? {
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
         return UIView()
     }
     
@@ -247,4 +286,18 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     //       return UITableView.automaticDimension
     //    }
     
+}
+
+extension String {
+    var htmlToAttributedString: NSAttributedString? {
+        guard let data = data(using: .utf8) else { return nil }
+        do {
+            return try NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding:String.Encoding.utf8.rawValue], documentAttributes: nil)
+        } catch {
+            return nil
+        }
+    }
+    var htmlToString: String {
+        return htmlToAttributedString?.string ?? ""
+    }
 }

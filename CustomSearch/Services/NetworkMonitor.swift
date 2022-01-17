@@ -23,12 +23,10 @@ class NetworkMonitor {
 
             if path.status == .satisfied {
                 print("We're connected!")
-                // post connected notification
             } else {
                 print("No connection.")
-                // post disconnected notification
             }
-            print(path.isExpensive)
+            //print(path.isExpensive)
         }
 
         let queue = DispatchQueue(label: "NetworkMonitor")
