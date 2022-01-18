@@ -37,6 +37,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         self.resultTableView.delegate = self
         self.resultTableView.dataSource = self
         self.searchQueryTextField.delegate = self
+        // rename keyboard return key to google
+        self.searchQueryTextField.returnKeyType = UIReturnKeyType.search
         
         self.footerStackView.addBackground(color: UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 0.3))
         
