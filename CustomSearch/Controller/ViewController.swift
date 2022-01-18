@@ -37,9 +37,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         resultTableView.delegate = self
         resultTableView.dataSource = self
         self.footerStackView.addBackground(color: UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 0.3))
+        
         // when app is launced previous and next button is disabled
         self.previousButton.isEnabled = false
         self.nextButton.isEnabled = false
+        
+        // hide keyboard when tapped outside of keyboard
+        self.hideKeyboardWhenTappedAround()
+        
         // searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
     }
     
@@ -108,6 +113,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
     
     
+    // returns total number of items for a search query
     func totalItemsForSearchQuery() -> Int {
         let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
         fetchRequest.includesSubentities = false
@@ -127,6 +133,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
     
     
+    // to fetch items 10 by 10 for a search query
     func fetchItems() {
         print("fetchItems() called with fetchStartIndex = \(self.fetchStartIndex)")
         // Fetch the data from Core Data to display in the tableview
@@ -191,7 +198,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         var noDataMessage =
         "<html style='font-size:20px; font-family: Tahoma;'>"
         + "<div align='center'>"
-            + "Your search - <b>" + (self.searchQuery ?? "") + "</b> - did not match any documents.<br>"
+            + "Your search - <b>" + (self.searchQuery ?? "") + "</b> - did not match any documents.<br><br>"
             + "<div align='left'>"
             + "<p>&nbsp;&nbsp;Suggestions:</p>"
             + "<ul>"
@@ -299,5 +306,18 @@ extension String {
     }
     var htmlToString: String {
         return htmlToAttributedString?.string ?? ""
+    }
+}
+
+// to hide the keyboard when touch outside the keyboard
+extension UIViewController {
+    func hideKeyboardWhenTappedAround() {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(UIViewController.dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+    
+    @objc func dismissKeyboard() {
+        view.endEditing(true)
     }
 }
