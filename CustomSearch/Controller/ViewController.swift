@@ -9,7 +9,7 @@ import UIKit
 import WebKit
 import CoreData
 
-class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate {
     
     @IBOutlet weak var resultTableView: UITableView!
     @IBOutlet weak var searchQueryTextField: UITextField!
@@ -34,8 +34,10 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         DispatchQueue.main.async {
             NetworkMonitor.shared.startMonitoring()
         }
-        resultTableView.delegate = self
-        resultTableView.dataSource = self
+        self.resultTableView.delegate = self
+        self.resultTableView.dataSource = self
+        self.searchQueryTextField.delegate = self
+        
         self.footerStackView.addBackground(color: UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 0.3))
         
         // when app is launced previous and next button is disabled
@@ -46,6 +48,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         self.hideKeyboardWhenTappedAround()
         
         // searchButton.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
+    }
+    
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        //textField code
+        textField.resignFirstResponder()  //if desired
+        self.searchButtonTapped((Any).self)
+        return true
     }
     
     
