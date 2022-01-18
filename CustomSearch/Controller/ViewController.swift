@@ -14,6 +14,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     @IBOutlet weak var resultTableView: UITableView!
     @IBOutlet weak var searchQueryTextField: UITextField!
     @IBOutlet weak var searchButton: UIButton!
+    @IBOutlet weak var totalResultsLabel: UILabel!
     @IBOutlet weak var footerStackView: UIStackView!
     @IBOutlet weak var previousButton: UIButton!
     @IBOutlet weak var nextButton: UIButton!
@@ -37,6 +38,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         self.resultTableView.delegate = self
         self.resultTableView.dataSource = self
         self.searchQueryTextField.delegate = self
+        
         // rename keyboard return key to google
         self.searchQueryTextField.returnKeyType = UIReturnKeyType.search
         
@@ -79,7 +81,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     func searchUtil() {
         print("\nsearchUtil called with \(searchQueryTextField.text!)")
-        var startIndex: Int = self.totalItemsForSearchQuery()
+        var startIndex: Int = 1
         var firstTime: Bool = true
         while startIndex < 100 {
             CustomSearchService.shared.callCustomSearchAPI(q: self.searchQuery ?? "", si: startIndex) { (success) in
@@ -122,6 +124,12 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                 self.resultTableView.reloadData()
             }
         }
+        let totalItemsInForSearchQueryInDatabase: Int = self.totalItemsForSearchQuery()
+        if totalItemsInForSearchQueryInDatabase > 0 {
+            DispatchQueue.main.async {
+                self.totalResultsLabel.text = "Total results \(totalItemsInForSearchQueryInDatabase)"
+            }
+        }
     }
     
     
@@ -155,7 +163,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             request.returnsObjectsAsFaults = false
             let pred = NSPredicate(format: "searchQuery == %@", self.searchQuery!)
             request.predicate = pred
-            request.fetchOffset = self.fetchStartIndex
+            request.fetchOffset = self.fetchStartIndex - 1
             request.fetchLimit = 10
             
             let result = try context.fetch(request)
