@@ -21,7 +21,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     var _items = [Items]()
     var webView: WKWebView!
     var searchQuery: String?
-    var previousSearchQuery: String?
     var fetchStartIndex: Int = 1
     var totalRowsForSearchQuery: Int = 0
     
@@ -32,9 +31,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         // starting network monitoring
-        DispatchQueue.main.async {
-            NetworkMonitor.shared.startMonitoring()
-        }
+        NetworkMonitor.shared.startMonitoring()
+        
         self.resultTableView.delegate = self
         self.resultTableView.dataSource = self
         self.searchQueryTextField.delegate = self
@@ -64,74 +62,75 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     
     @IBAction func searchButtonTapped(_ sender: Any) {
-        DispatchQueue.main.async {
-            self.view.endEditing(true)
-        }
         self.searchQuery = searchQueryTextField.text?.trimmingCharacters(in: CharacterSet.whitespaces)
         // print("Query = \(searchQuery!)")
-        if(self.searchQuery?.isEmpty == false && self.searchQuery != nil) {
-            if self.searchQuery != self.previousSearchQuery {
-                self.fetchStartIndex = 1
-            }
-            searchUtil()
-            self.previousSearchQuery = self.searchQuery
+        if(self.searchQuery != nil && self.searchQuery?.isEmpty == false) {
+            self.fetchStartIndex = 1
+            performSearch()
         }
     }
     
     
-    func searchUtil() {
-        print("\nsearchUtil called with \(searchQueryTextField.text!)")
-        var startIndex: Int = 1
-        var firstTime: Bool = true
-        while startIndex < 100 {
-            CustomSearchService.shared.callCustomSearchAPI(q: self.searchQuery ?? "", si: startIndex) { (success) in
-                if success {
-                    for item in [CustomSearchService.shared.customSearch.items] {
-                        if let eachItem = item {
-                            for index in 0..<eachItem.count {
-                                let itemObj = All_Items(context: self.context)
-                                itemObj.searchQuery = self.searchQuery
-                                itemObj.link = eachItem[index].link
-                                itemObj.title = eachItem[index].title
-                                itemObj.snippet = eachItem[index].snippet
-                                do {
-                                    try self.context.save()
-                                    // print("\(startIndex+index) th item Saved successfully")
-                                }
-                                catch {
-                                    print("Error in saving")
-                                }
+    func performSearch() {
+        print("performSearch() called with \(searchQueryTextField.text!)\n")
+        self.deleteItemsWithSearchQuery()
+        self.searchUtil(si: 1, num: 10)
+        self.fetchItems()
+        DispatchQueue.main.async {
+            self.resultTableView.reloadData()
+        }
+        self.updateTotalResultsMessage()
+        self.searchUtil(si: 11, num: 90)
+    }
+    
+    
+    func searchUtil(si: Int, num: Int) {
+        print("searchUtil() called with start=\(si), num=\(num)\n")
+        CustomSearchService.shared.callCustomSearchAPI(q: self.searchQuery ?? "", si: si, num: num) { (success) in
+            if success {
+                for item in [CustomSearchService.shared.customSearch.items] {
+                    if let eachItem = item {
+                        for index in 0..<eachItem.count {
+                            let itemObj = All_Items(context: self.context)
+                            itemObj.searchQuery = self.searchQuery
+                            itemObj.link = eachItem[index].link
+                            itemObj.title = eachItem[index].title
+                            itemObj.snippet = eachItem[index].snippet
+                            //itemObj.pageContent = ""
+                            do {
+                                try self.context.save()
+                                // print("\(startIndex+index) th item Saved successfully")
+                            }
+                            catch {
+                                print("Error in saving")
                             }
                         }
                     }
-                    if firstTime {
-                        self.fetchItems()
-                        DispatchQueue.main.async {
-                            self.resultTableView.reloadData()
-                        }
-                        firstTime = false
-                    }
-                }
-                else {
-                    print("No internet connection")
                 }
             }
-            startIndex += 10
-        }
-        if firstTime {
-            self.fetchItems()
-            DispatchQueue.main.async {
-                self.resultTableView.reloadData()
-            }
-        }
-        let totalItemsInForSearchQueryInDatabase: Int = self.totalItemsForSearchQuery()
-        if totalItemsInForSearchQueryInDatabase > 0 {
-            DispatchQueue.main.async {
-                self.totalResultsLabel.text = "Total results \(totalItemsInForSearchQueryInDatabase)"
+            else {
+                print("No internet connection")
             }
         }
     }
     
+    
+    // function to update total results message
+    func updateTotalResultsMessage() {
+        print("updateTotalResultsMessage() called\n")
+        let totalItemsInForSearchQueryInDatabase: Int = self.totalItemsForSearchQuery()
+        var totalResultsMessage: String = ""
+        if totalItemsInForSearchQueryInDatabase == 1 {
+            totalResultsMessage = "1 result"
+        }
+        else if totalItemsInForSearchQueryInDatabase > 1 {
+            totalResultsMessage = "\(totalItemsInForSearchQueryInDatabase) results"
+        }
+        self.totalResultsLabel.text = totalResultsMessage
+    }
+    
+    
+    // database methods
     
     // returns total number of items for a search query
     func totalItemsForSearchQuery() -> Int {
@@ -147,7 +146,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         catch {
             print("error executing fetch request: \(error)")
         }
-        print("Total rows for \(self.searchQuery!) = \(entitiesCount)")
+        print("Total rows for \(self.searchQuery!) = \(entitiesCount)\n")
         self.totalRowsForSearchQuery = entitiesCount
         return entitiesCount
     }
@@ -155,7 +154,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     // to fetch items 10 by 10 for a search query
     func fetchItems() {
-        print("fetchItems() called with fetchStartIndex = \(self.fetchStartIndex)")
+        print("fetchItems() called with fetchStartIndex = \(self.fetchStartIndex)\n")
         // Fetch the data from Core Data to display in the tableview
         do {
             let request = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
@@ -185,6 +184,38 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         }
         updateButtonVisibility()
         updateNoSearchResultsMessage()
+    }
+    
+    
+    // delete records which has searchQuery equals to current search query
+    func deleteItemsWithSearchQuery() {
+        let fetchRequest: NSFetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
+        let pred = NSPredicate(format: "searchQuery == %@", self.searchQuery!)
+        fetchRequest.predicate = pred
+        let batchDeleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+        batchDeleteRequest.resultType = .resultTypeObjectIDs
+        
+        do {
+            // perform the batch delete
+            let result = try context.execute(batchDeleteRequest) as? NSBatchDeleteResult
+            guard let deleteResult = result?.result as? [NSManagedObjectID] else {
+                return
+            }
+
+            let deletedObjects: [AnyHashable: Any] = [
+                NSDeletedObjectsKey: deleteResult
+            ]
+
+            // Merge the delete changes into the managed object context
+            NSManagedObjectContext.mergeChanges(
+                fromRemoteContextSave: deletedObjects,
+                into: [context]
+            )
+        }
+        catch {
+            print("Error in deleting items")
+            debugPrint(error)
+        }
     }
     
     

@@ -20,6 +20,6 @@ extension All_Items {
     @NSManaged public var searchQuery: String?
     @NSManaged public var snippet: String?
     @NSManaged public var title: String?
-    @NSManaged public var pageContent: String?
+//    @NSManaged public var pageContent: String?
 
 }

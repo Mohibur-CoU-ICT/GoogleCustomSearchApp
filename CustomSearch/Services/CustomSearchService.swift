@@ -16,8 +16,8 @@ class CustomSearchService {
         
     }
     
-    func callCustomSearchAPI(q: String, si: Int, completionHandler: @escaping (Bool) -> Void ) {
-        let urlString = "https://www.googleapis.com/customsearch/v1?key=AIzaSyBhDq-e6q0W3aImfJoaABG37vN-LVlx4J8&cx=6e6d97019e0665110&start=\(si)&q=\(q)"
+    func callCustomSearchAPI(q: String, si: Int, num: Int, completionHandler: @escaping (Bool) -> Void ) {
+        let urlString = "https://www.googleapis.com/customsearch/v1?key=AIzaSyBhDq-e6q0W3aImfJoaABG37vN-LVlx4J8&num=\(num)&cx=6e6d97019e0665110&start=\(si)&q=\(q)"
         
         if let escapedURLString = urlString.addingPercentEncoding(withAllowedCharacters: Foundation.CharacterSet.urlQueryAllowed), let url = URL(string: escapedURLString) {
             
