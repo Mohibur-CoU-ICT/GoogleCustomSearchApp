@@ -40,6 +40,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         // rename keyboard return key to google
         self.searchQueryTextField.returnKeyType = UIReturnKeyType.search
         
+        // add a background to the footer stackview
         self.footerStackView.addBackground(color: UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 0.3))
         
         // when app is launced previous and next button is disabled
@@ -53,6 +54,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
     
     
+    // perform search when return key is pressed
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         //textField code
         textField.resignFirstResponder()  //if desired
@@ -61,72 +63,58 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
     
     
+    // call when search button is tapped
     @IBAction func searchButtonTapped(_ sender: Any) {
         self.searchQuery = searchQueryTextField.text?.trimmingCharacters(in: CharacterSet.whitespaces)
-        // print("Query = \(searchQuery!)")
+        // print("Query = \(searchQuery!)\n")
         if(self.searchQuery != nil && self.searchQuery?.isEmpty == false) {
             self.fetchStartIndex = 1
-            performSearch()
+            self.searchUtil(si: 1, num: 10)
+            self.fetchItems()
         }
     }
     
     
-    func performSearch() {
-        print("performSearch() called with \(searchQueryTextField.text!)\n")
-        self.deleteItemsWithSearchQuery()
-        self.searchUtil(si: 1, num: 10)
-        self.fetchItems()
-        DispatchQueue.main.async {
-            self.resultTableView.reloadData()
-        }
-        self.updateTotalResultsMessage()
-        self.searchUtil(si: 11, num: 90)
-    }
-    
-    
+    // helper function to perform search
     func searchUtil(si: Int, num: Int) {
-        print("searchUtil() called with start=\(si), num=\(num)\n")
-        CustomSearchService.shared.callCustomSearchAPI(q: self.searchQuery ?? "", si: si, num: num) { (success) in
-            if success {
-                for item in [CustomSearchService.shared.customSearch.items] {
-                    if let eachItem = item {
-                        for index in 0..<eachItem.count {
-                            let itemObj = All_Items(context: self.context)
-                            itemObj.searchQuery = self.searchQuery
-                            itemObj.link = eachItem[index].link
-                            itemObj.title = eachItem[index].title
-                            itemObj.snippet = eachItem[index].snippet
-                            //itemObj.pageContent = ""
+        var firstTime: Bool = true
+        var si: Int = si
+        while si < 100 {
+            print("callCustomSearchAPI() called with start=\(si), num=\(num)\n")
+            CustomSearchService.shared.callCustomSearchAPI(q: self.searchQuery ?? "", si: si, num: num) { (success) in
+                if success {
+                    if firstTime {
+                        self.deleteItemsWithSearchQuery()
+                        firstTime = false
+                    }
+                    for item in [CustomSearchService.shared.customSearch.items] {
+                        print("item.count = \(item?.count ?? -1)\n")
+                        if let eachItem = item {
+                            print("eachItem.count = \(eachItem.count)\n")
+                            for index in 0..<eachItem.count {
+                                let itemObj = All_Items(context: self.context)
+                                itemObj.searchQuery = self.searchQuery
+                                itemObj.link = eachItem[index].link
+                                itemObj.title = eachItem[index].title
+                                itemObj.snippet = eachItem[index].snippet
+                                //itemObj.pageContent = ""
+                            }
                             do {
                                 try self.context.save()
-                                // print("\(startIndex+index) th item Saved successfully")
+                                print("\(eachItem.count) new items for \(self.searchQuery!) saved successfully\n")
                             }
                             catch {
-                                print("Error in saving")
+                                print("Error in saving\n")
                             }
                         }
                     }
                 }
+                else {
+                    print("No internet connection\n")
+                }
             }
-            else {
-                print("No internet connection")
-            }
+            si += 10
         }
-    }
-    
-    
-    // function to update total results message
-    func updateTotalResultsMessage() {
-        print("updateTotalResultsMessage() called\n")
-        let totalItemsInForSearchQueryInDatabase: Int = self.totalItemsForSearchQuery()
-        var totalResultsMessage: String = ""
-        if totalItemsInForSearchQueryInDatabase == 1 {
-            totalResultsMessage = "1 result"
-        }
-        else if totalItemsInForSearchQueryInDatabase > 1 {
-            totalResultsMessage = "\(totalItemsInForSearchQueryInDatabase) results"
-        }
-        self.totalResultsLabel.text = totalResultsMessage
     }
     
     
@@ -144,7 +132,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             entitiesCount = try context.count(for: fetchRequest)
         }
         catch {
-            print("error executing fetch request: \(error)")
+            print("error executing fetch request: \(error)\n")
         }
         print("Total rows for \(self.searchQuery!) = \(entitiesCount)\n")
         self.totalRowsForSearchQuery = entitiesCount
@@ -180,15 +168,18 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             }
         }
         catch {
-            print("Error in fetchItems(): " + error.localizedDescription)
+            print("Error in fetchItems()\n")
+            debugPrint(error)
         }
-        updateButtonVisibility()
-        updateNoSearchResultsMessage()
+        self.updateTotalResultsMessage()
+        self.updateButtonVisibility()
+        self.updateNoSearchResultsMessage()
     }
     
     
     // delete records which has searchQuery equals to current search query
     func deleteItemsWithSearchQuery() {
+        print("deleteItemsWithSearchQuery() called\n")
         let fetchRequest: NSFetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
         let pred = NSPredicate(format: "searchQuery == %@", self.searchQuery!)
         fetchRequest.predicate = pred
@@ -201,19 +192,18 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             guard let deleteResult = result?.result as? [NSManagedObjectID] else {
                 return
             }
-
             let deletedObjects: [AnyHashable: Any] = [
                 NSDeletedObjectsKey: deleteResult
             ]
-
             // Merge the delete changes into the managed object context
             NSManagedObjectContext.mergeChanges(
                 fromRemoteContextSave: deletedObjects,
                 into: [context]
             )
+            print("previous items of \(self.searchQuery!) deleted from database\n")
         }
         catch {
-            print("Error in deleting items")
+            print("Error in deleting items\n")
             debugPrint(error)
         }
     }
@@ -231,6 +221,23 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         if self.fetchStartIndex - 10 >= 1 {
             self.fetchStartIndex -= 10
             fetchItems()
+        }
+    }
+    
+    
+    // function to update total results message
+    func updateTotalResultsMessage() {
+        print("updateTotalResultsMessage() called\n")
+        let totalItemsForSearchQueryInDatabase: Int = self.totalItemsForSearchQuery()
+        var totalResultsMessage: String = ""
+        if totalItemsForSearchQueryInDatabase == 1 {
+            totalResultsMessage = "1 result"
+        }
+        else if totalItemsForSearchQueryInDatabase > 1 {
+            totalResultsMessage = "\(totalItemsForSearchQueryInDatabase) results"
+        }
+        DispatchQueue.main.async {
+            self.totalResultsLabel.text = totalResultsMessage
         }
     }
     
@@ -280,12 +287,12 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     // TableView methods
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        // print("Total number of rows in table = \(self._items.count)")
+        // print("Total number of rows in table = \(self._items.count)\n")
         return self._items.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        // print("cell for row at called with \(indexPath.row)")
+        // print("cell for row at called with \(indexPath.row)\n")
         if let cell = tableView.dequeueReusableCell(withIdentifier: "CustomGoogleSearchTableViewCell", for: indexPath) as? CustomGoogleSearchTableViewCell
         {
             cell.linkLabel.text = self._items[indexPath.row].link ?? ""
@@ -298,25 +305,26 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        // print("You tapped \(indexPath.row) th link")
-        // To open a link in another view
+        // print("You tapped \(indexPath.row) th link\n")
+        // To open a link in a webview
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         let webViewController = storyboard.instantiateViewController(withIdentifier: "WebViewController") as! WebViewController
         webViewController.link = (_items[indexPath.row].link)!
         webViewController.modalPresentationStyle = UIModalPresentationStyle.fullScreen
         self.present(webViewController, animated: true, completion: nil)
+        // when back from webview deselect the row
         self.resultTableView.deselectRow(at: indexPath, animated: true)
         
         // Save web page content to database
         let myURLString = webViewController.link
         guard let myURL = URL(string: myURLString) else {
-            print("Error: \(myURLString) doesn't seem to be a valid URL")
+            print("Error: \(myURLString) doesn't seem to be a valid URL\n")
             return
         }
 
         do {
             let myHTMLString = try String(contentsOf: myURL, encoding: .ascii)
-//            print("WebPage content = \n \(myHTMLString)")
+//            print("WebPage content = \n \(myHTMLString)\n")
             
             let request = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
             // set the filtering on the request
@@ -346,6 +354,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
 }
 
+// to enable html formated string in label
 extension String {
     var htmlToAttributedString: NSAttributedString? {
         guard let data = data(using: .utf8) else { return nil }
