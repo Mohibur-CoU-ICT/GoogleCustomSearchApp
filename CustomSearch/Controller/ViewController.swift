@@ -66,38 +66,45 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     // call when search button is tapped
     @IBAction func searchButtonTapped(_ sender: Any) {
         self.searchQuery = searchQueryTextField.text?.trimmingCharacters(in: CharacterSet.whitespaces)
-        // print("Query = \(searchQuery!)\n")
+        print("Search button tapped with Query = \(searchQuery!)\n")
         if(self.searchQuery != nil && self.searchQuery?.isEmpty == false) {
             self.fetchStartIndex = 1
-            self.searchUtil(si: 1, num: 10)
-            self.fetchItems()
+            if NetworkMonitor.shared.isReachable {
+                self.searchUtil(si: 1, num: 10)
+//                print("Before delay")
+//                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+//                    print("Async after 1 seconds")
+//                }
+            }
+            else {
+                self.fetchItems()
+            }
         }
     }
     
     
     // helper function to perform search
     func searchUtil(si: Int, num: Int) {
-        var firstTime: Bool = true
+        var firstTimeDelete: Bool = true
         var si: Int = si
         while si < 100 {
-            print("callCustomSearchAPI() called with start=\(si), num=\(num)\n")
             CustomSearchService.shared.callCustomSearchAPI(q: self.searchQuery ?? "", si: si, num: num) { (success) in
                 if success {
-                    if firstTime {
-                        self.deleteItemsWithSearchQuery()
-                        firstTime = false
-                    }
                     for item in [CustomSearchService.shared.customSearch.items] {
-                        print("item.count = \(item?.count ?? -1)\n")
+                        print("item.count = \(item?.count ?? -1) for start=\(si)\n")
+                        if item?.count != nil && firstTimeDelete {
+                            self.deleteItemsWithSearchQuery(si: si)
+                            firstTimeDelete = false
+                        }
                         if let eachItem = item {
-                            print("eachItem.count = \(eachItem.count)\n")
+                            print("eachItem.count = \(eachItem.count) for start=\(si)\n")
                             for index in 0..<eachItem.count {
                                 let itemObj = All_Items(context: self.context)
                                 itemObj.searchQuery = self.searchQuery
                                 itemObj.link = eachItem[index].link
                                 itemObj.title = eachItem[index].title
                                 itemObj.snippet = eachItem[index].snippet
-                                //itemObj.pageContent = ""
+                                //itemObj.pagePath = ""
                             }
                             do {
                                 try self.context.save()
@@ -108,6 +115,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                             }
                         }
                     }
+                    self.fetchItems()
                 }
                 else {
                     print("No internet connection\n")
@@ -128,12 +136,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         fetchRequest.predicate = pred
         
         var entitiesCount = 0
+//        DispatchQueue.global(qos: .userInitiated).async {
         do {
-            entitiesCount = try context.count(for: fetchRequest)
+            entitiesCount = try self.context.count(for: fetchRequest)
         }
         catch {
             print("error executing fetch request: \(error)\n")
         }
+//        }
         print("Total rows for \(self.searchQuery!) = \(entitiesCount)\n")
         self.totalRowsForSearchQuery = entitiesCount
         return entitiesCount
@@ -143,6 +153,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     // to fetch items 10 by 10 for a search query
     func fetchItems() {
         print("fetchItems() called with fetchStartIndex = \(self.fetchStartIndex)\n")
+//        DispatchQueue.global(qos: .userInitiated).async {
         // Fetch the data from Core Data to display in the tableview
         do {
             let request = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
@@ -153,9 +164,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             request.fetchOffset = self.fetchStartIndex - 1
             request.fetchLimit = 10
             
-            let result = try context.fetch(request)
+            let result = try self.context.fetch(request)
             
+            // removing previous items and then appending new items
             self._items.removeAll()
+            
             for res in result as! [NSManagedObject] {
                 let obj = Items()
                 obj.title = res.value(forKey: "title") as? String
@@ -171,24 +184,25 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             print("Error in fetchItems()\n")
             debugPrint(error)
         }
-        self.updateTotalResultsMessage()
-        self.updateButtonVisibility()
-        self.updateNoSearchResultsMessage()
+        // update messages after fetching
+        self.updateMessages()
+//        }
     }
     
     
     // delete records which has searchQuery equals to current search query
-    func deleteItemsWithSearchQuery() {
-        print("deleteItemsWithSearchQuery() called\n")
+    func deleteItemsWithSearchQuery(si: Int) {
+        print("deleteItemsWithSearchQuery() called for start=\(si)\n")
         let fetchRequest: NSFetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
         let pred = NSPredicate(format: "searchQuery == %@", self.searchQuery!)
         fetchRequest.predicate = pred
         let batchDeleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
         batchDeleteRequest.resultType = .resultTypeObjectIDs
         
+//        DispatchQueue.global(qos: .userInitiated).async {
         do {
             // perform the batch delete
-            let result = try context.execute(batchDeleteRequest) as? NSBatchDeleteResult
+            let result = try self.context.execute(batchDeleteRequest) as? NSBatchDeleteResult
             guard let deleteResult = result?.result as? [NSManagedObjectID] else {
                 return
             }
@@ -198,7 +212,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             // Merge the delete changes into the managed object context
             NSManagedObjectContext.mergeChanges(
                 fromRemoteContextSave: deletedObjects,
-                into: [context]
+                into: [self.context]
             )
             print("previous items of \(self.searchQuery!) deleted from database\n")
         }
@@ -206,6 +220,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             print("Error in deleting items\n")
             debugPrint(error)
         }
+//        }
     }
     
     
@@ -213,15 +228,23 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     @IBAction func nextButtonTapped(_ sender: Any) {
         if self.fetchStartIndex + 10 <= 91 && self.fetchStartIndex + 10 <= self.totalRowsForSearchQuery {
             self.fetchStartIndex += 10
-            fetchItems()
+            self.fetchItems()
         }
     }
     
     @IBAction func previousButtonTapped(_ sender: Any) {
         if self.fetchStartIndex - 10 >= 1 {
             self.fetchStartIndex -= 10
-            fetchItems()
+            self.fetchItems()
         }
+    }
+    
+    
+    // update messages
+    func updateMessages() {
+        self.updateTotalResultsMessage()
+        self.updateButtonVisibility()
+        self.updateNoSearchResultsMessage()
     }
     
     
@@ -253,26 +276,27 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     // update message of no search results
     func updateNoSearchResultsMessage() {
-        var noDataMessage =
-        "<html style='font-size:20px; font-family: Tahoma;'>"
-        + "<div align='center'>"
-            + "Your search - <b>" + (self.searchQuery ?? "") + "</b> - did not match any documents.<br><br>"
-            + "<div align='left'>"
-            + "<p>&nbsp;&nbsp;Suggestions:</p>"
-            + "<ul>"
-                + "<li>Make sure that all words are spelled correctly.</li>"
-                + "<li>Try different keywords.</li>"
-                + "<li>Try more general keywords.</li>"
-                + "<li>Try fewer keywords.</li>"
-            + "</ul>"
-            + "</div>"
-        + "<div>"
-        + "</html>"
-        
         if self.totalRowsForSearchQuery == 0 {
+            var noDataMessage =
+            "<html style='font-size:20px; font-family: Tahoma;'>"
+            + "<div align='center'>"
+                + "Your search - <b>" + (self.searchQuery ?? "") + "</b> - did not match any documents.<br><br>"
+                + "<div align='left'>"
+                + "<p>&nbsp;&nbsp;Suggestions:</p>"
+                + "<ul>"
+                    + "<li>Make sure that all words are spelled correctly.</li>"
+                    + "<li>Try different keywords.</li>"
+                    + "<li>Try more general keywords.</li>"
+                    + "<li>Try fewer keywords.</li>"
+                + "</ul>"
+                + "</div>"
+            + "<div>"
+            + "</html>"
+            
             if NetworkMonitor.shared.isReachable == false {
-                noDataMessage = "<html style='font-size:20px;'><div align='center'>You are offline and no data<br>found in the offline database.</div></html>"
+                noDataMessage = "<html style='font-size:20px;'><div align='center'>You are offline and no data<br>found for \(self.searchQuery ?? "") in the offline database.</div></html>"
             }
+            
             DispatchQueue.main.async {
                 let noDataLabel = UILabel(frame: CGRect(x: 0.0, y: 0.0, width: self.resultTableView.bounds.size.width, height: self.resultTableView.bounds.size.height))
 //                noDataLabel.text          = noDataMessage
@@ -309,38 +333,31 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         // To open a link in a webview
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         let webViewController = storyboard.instantiateViewController(withIdentifier: "WebViewController") as! WebViewController
+        webViewController._title = (_items[indexPath.row].title)!
         webViewController.link = (_items[indexPath.row].link)!
         webViewController.modalPresentationStyle = UIModalPresentationStyle.fullScreen
         self.present(webViewController, animated: true, completion: nil)
         // when back from webview deselect the row
         self.resultTableView.deselectRow(at: indexPath, animated: true)
         
-        // Save web page content to database
-        let myURLString = webViewController.link
-        guard let myURL = URL(string: myURLString) else {
-            print("Error: \(myURLString) doesn't seem to be a valid URL\n")
-            return
-        }
-
-        do {
-            let myHTMLString = try String(contentsOf: myURL, encoding: .ascii)
-//            print("WebPage content = \n \(myHTMLString)\n")
-            
-            let request = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
-            // set the filtering on the request
-            request.returnsObjectsAsFaults = false
-            let pred = NSPredicate(format: "link == %@", myURLString)
-            request.predicate = pred
-            
-            let results = try context.fetch(request)
-            if (results.count > 0) {
-                let update = results[0] as! NSManagedObject
-                update.setValue(myHTMLString, forKey: "pageContent")
-                try context.save()
-            }
-        } catch let error {
-            debugPrint(error)
-        }
+        // Save web page path to database
+//        do {
+//            let pagePath = (_items[indexPath.row].link)! + "\\"
+//            let request = NSFetchRequest<NSFetchRequestResult>(entityName: "All_Items")
+//            // set the filtering on the request
+//            request.returnsObjectsAsFaults = false
+//            let pred = NSPredicate(format: "link == %@", myURLString)
+//            request.predicate = pred
+//
+//            let results = try context.fetch(request)
+//            if (results.count > 0) {
+//                let update = results[0] as! NSManagedObject
+//                update.setValue(pagePath, forKey: "pagePath")
+//                try context.save()
+//            }
+//        } catch let error {
+//            debugPrint(error)
+//        }
     }
     
     func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {

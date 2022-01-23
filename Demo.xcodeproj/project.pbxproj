@@ -167,7 +167,6 @@
 		86AEADBA27685458000CAFA2 /* CustomSearch */ = {
 			isa = PBXGroup;
 			children = (
-				86B14800278FFD420051AAB4 /* Offline_Pages */,
 				86CDA63827704CF700C32EA2 /* Services */,
 				86CDA63727704CE700C32EA2 /* Model */,
 				86CDA63627704CDB00C32EA2 /* View */,
@@ -181,13 +180,6 @@
 				8608814127859C16002AD2E8 /* CustomSearch.xcdatamodeld */,
 			);
 			path = CustomSearch;
-			sourceTree = "<group>";
-		};
-		86B14800278FFD420051AAB4 /* Offline_Pages */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Offline_Pages;
 			sourceTree = "<group>";
 		};
 		86CDA63527704CCF00C32EA2 /* Controller */ = {

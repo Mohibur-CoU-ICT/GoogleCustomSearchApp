@@ -17,10 +17,12 @@ class CustomSearchService {
     }
     
     func callCustomSearchAPI(q: String, si: Int, num: Int, completionHandler: @escaping (Bool) -> Void ) {
+        print("callCustomSearchAPI() called with start=\(si), num=\(num)\n")
         let urlString = "https://www.googleapis.com/customsearch/v1?key=AIzaSyBhDq-e6q0W3aImfJoaABG37vN-LVlx4J8&num=\(num)&cx=6e6d97019e0665110&start=\(si)&q=\(q)"
         
         if let escapedURLString = urlString.addingPercentEncoding(withAllowedCharacters: Foundation.CharacterSet.urlQueryAllowed), let url = URL(string: escapedURLString) {
             
+//            DispatchQueue.global(qos: .userInitiated).async {
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -31,10 +33,6 @@ class CustomSearchService {
                 if error == nil && data != nil {
                     // Parse JSON
                     let decoder = JSONDecoder()
-                    // this line need to work with core data model
-//                    DispatchQueue.main.async {
-//                        decoder.userInfo[CodingUserInfoKey.managedObjectContext] = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-//                    }
                     do {
                         let searchResult = try decoder.decode(CustomSearch.self, from: data!)
 //                        print(searchResult)
@@ -42,9 +40,8 @@ class CustomSearchService {
                         completionHandler(true)
                     }
                     catch {
-//                        print(error)
                         debugPrint(error)
-                        print("Error in JSON parsing inside callCustomSearchAPI")
+                        print("Error in JSON parsing inside callCustomSearchAPI\n")
                     }
                 }
                 else{
@@ -53,9 +50,10 @@ class CustomSearchService {
             })
             
             task.resume()
+//            }
         }
         else {
-            print("Error occured")
+            print("Error in api url\n")
         }
     }
 }
