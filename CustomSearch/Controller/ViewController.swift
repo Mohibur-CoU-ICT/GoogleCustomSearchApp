@@ -306,6 +306,10 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                 self.resultTableView.backgroundView = noDataLabel
             }
         }
+        else {
+            // remove background message when there is data
+            self.resultTableView.backgroundView = nil
+        }
     }
     
     
