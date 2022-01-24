@@ -237,7 +237,9 @@
                         </constraints>
                     </view>
                     <connections>
+                        <outlet property="backwardButton" destination="JCU-Ia-Rbh" id="Gaj-3C-mIg"/>
                         <outlet property="footerStackView" destination="Q3Y-nL-vhW" id="3zz-8C-Av7"/>
+                        <outlet property="forwardButton" destination="XJp-jf-vIt" id="7xa-tg-67s"/>
                         <outlet property="webView" destination="oxZ-nY-zWY" id="nle-7T-6kc"/>
                     </connections>
                 </viewController>

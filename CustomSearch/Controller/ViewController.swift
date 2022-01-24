@@ -308,7 +308,9 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         }
         else {
             // remove background message when there is data
-            self.resultTableView.backgroundView = nil
+            DispatchQueue.main.async {
+                self.resultTableView.backgroundView = nil
+            }
         }
     }
     

@@ -12,6 +12,8 @@ class WebViewController: UIViewController {
     
     @IBOutlet weak var webView: WKWebView!
     @IBOutlet weak var footerStackView: UIStackView!
+    @IBOutlet weak var backwardButton: UIButton!
+    @IBOutlet weak var forwardButton: UIButton!
     let indicator = UIActivityIndicatorView(style: .gray)
     
     var _title = "PageName"
@@ -30,6 +32,15 @@ class WebViewController: UIViewController {
         indicator.center = view.center
         view.addSubview(indicator)
         
+        // load the web page
+        self.loadWebPage()
+        
+        // update button visibility
+        self.updateButtonVisibility()
+    }
+    
+    // to load the web page from internet or file manager
+    func loadWebPage() {
         if NetworkMonitor.shared.isReachable {
             let myURL = URL(string: link)
             var myRequest = URLRequest(url: myURL!)
@@ -86,9 +97,12 @@ class WebViewController: UIViewController {
         }
     }
     
-    //    override func viewDidAppear(_ animated: Bool) {
-    //        indicator.startAnimating()
-    //    }
+    func updateButtonVisibility() {
+        DispatchQueue.main.async {
+            self.forwardButton.isEnabled = self.webView.canGoForward
+            self.backwardButton.isEnabled = self.webView.canGoBack
+        }
+    }
     
     @IBAction func backwardButtonTapped(_ sender: Any) {
         webView?.goBack()
@@ -106,14 +120,15 @@ class WebViewController: UIViewController {
 
 extension WebViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-        //        print("Start Loading")
+        //print("Start Loading")
+        self.updateButtonVisibility()
         DispatchQueue.main.async {
             self.indicator.startAnimating()
         }
     }
     
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        //        print("End loading")
+        //print("End loading")
         DispatchQueue.main.async {
             self.indicator.stopAnimating()
         }
