@@ -9,6 +9,7 @@ import Foundation
 
 class CustomSearch: Decodable {
 //    var queries: Queries?
+    var searchInformation: SearchInformation?
     var items: [Items]?
 }
 
@@ -16,6 +17,11 @@ class CustomSearch: Decodable {
 //    var previousPage: [PreviousPage]?
 //    var nextPage: [NextPage]?
 //}
+
+class SearchInformation: Decodable {
+    var formattedSearchTime: String?
+    var formattedTotalResults: String?
+}
 
 class Items: Decodable {
     var title: String?
