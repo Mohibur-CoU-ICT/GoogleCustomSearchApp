@@ -41,6 +41,7 @@ class WebViewController: UIViewController {
     
     // to load the web page from internet or file manager
     func loadWebPage() {
+        print("loadWebPage() called\n")
         if NetworkMonitor.shared.isReachable {
             let myURL = URL(string: link)
             var myRequest = URLRequest(url: myURL!)
